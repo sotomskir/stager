@@ -1,16 +1,20 @@
 import { NgModule } from '@angular/core';
 import { RouterModule } from '@angular/router';
-import { errorRoute, navbarRoute } from './layouts';
+import { errorRoute, NavbarComponent } from './layouts';
 import { DEBUG_INFO_ENABLED } from './app.constants';
 
-const LAYOUT_ROUTES = [
-    navbarRoute,
+const MAIN_ROUTES = [
+    {
+        path: '',
+        component: NavbarComponent,
+        outlet: 'navbar'
+    },
     ...errorRoute
 ];
 
 @NgModule({
     imports: [
-        RouterModule.forRoot(LAYOUT_ROUTES, { useHash: true , enableTracing: DEBUG_INFO_ENABLED })
+        RouterModule.forRoot(MAIN_ROUTES, { useHash: true , enableTracing: DEBUG_INFO_ENABLED })
     ],
     exports: [
         RouterModule

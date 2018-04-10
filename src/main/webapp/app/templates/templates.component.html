@@ -1,0 +1,19 @@
+<div>
+    <jhi-alert></jhi-alert>
+    <div *ngIf="!selectedTemplate">
+        <ul class="nav nav-tabs">
+            <li class="nav-item" *ngFor="let tab of tabs">
+                <a class="nav-link" (click)="activateTab(tab)" [ngClass]="{'active': isActive(tab)}">{{tab.label}}</a>
+            </li>
+        </ul>
+        <div [ngSwitch]="activeTab.code">
+            <div *ngSwitchCase="'stack'">
+                <jhi-template-list (select)="selectTemplate($event)" [templates]="stacks"></jhi-template-list>
+            </div>
+            <div *ngSwitchCase="'container'">
+                <jhi-template-list (select)="selectTemplate($event)" [templates]="containers"></jhi-template-list>
+            </div>
+        </div>
+    </div>
+    <jhi-deploy (cancel)="clearSelectedTemplate()" *ngIf="selectedTemplate" [template]="selectedTemplate"></jhi-deploy>
+</div>

@@ -1,0 +1,31 @@
+<div>
+    <img src="{{template.logo}}">
+    <span class="h2">{{template.title}}</span>
+</div>
+<hr>
+<div>
+    <h5>{{template.description}}</h5>
+    <p *ngIf="template.note" [innerHTML]="template.note"></p>
+    <div>
+        <form #form="ngForm">
+            <div class="form-group">
+                <label for="name">Name</label>
+                <input type="text" class="form-control" id="name" name="name" [(ngModel)]="stack.name" required placeholder="Name">
+            </div>
+            <div *ngFor="let variable of template.env" class="form-group">
+                <label for="{{variable.name}}">
+                    {{variable.label}} <i class="fa fa-info-circle" *ngIf="variable.description" ngbTooltip="{{variable.description}}" aria-hidden="true"></i>
+                </label>
+                <input type="text"
+                       class="form-control"
+                       id="{{variable.name}}"
+                       name="{{variable.name}}"
+                       [(ngModel)]="stack.environment[variable.name]"
+                       placeholder="{{variable.label}}"
+                       required>
+            </div>
+            <button (click)="cancelDeploy()" class="btn btn-secondary">Cancel</button>
+            <button (click)="doDeploy()" [disabled]="form.invalid" class="btn btn-primary">Deploy</button>
+        </form>
+    </div>
+</div>

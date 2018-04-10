@@ -1,0 +1,7 @@
+<ul>
+    <li *ngFor="let template of templates" (click)="selectTemplate(template)">
+        <img src="{{template.logo}}">
+        <h3>{{template.title}}</h3>
+        <p>{{template.description}}</p>
+    </li>
+</ul>

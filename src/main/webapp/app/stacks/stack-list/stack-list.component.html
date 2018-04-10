@@ -1,0 +1,45 @@
+<table class="table">
+    <thead>
+    <tr>
+        <th>Template</th>
+        <th>Name</th>
+        <th>Owner</th>
+        <th>Actions</th>
+    </tr>
+    <tr>
+        <th>
+            <mat-form-field>
+                <mat-select placeholder="Template" [formControl]="selectedTemplates" multiple>
+                    <mat-option *ngFor="let template of templates" [value]="template">{{template}}</mat-option>
+                </mat-select>
+            </mat-form-field>
+        </th>
+        <th>
+            <mat-form-field>
+                <mat-select placeholder="Name" [formControl]="selectedNames" multiple>
+                    <mat-option *ngFor="let stack of stacks" [value]="stack.name">{{stack.name}}</mat-option>
+                </mat-select>
+            </mat-form-field>
+        </th>
+        <th>
+            <mat-form-field>
+                <mat-select placeholder="Owner" [formControl]="selectedOwners" multiple>
+                    <mat-option *ngFor="let owner of owners" [value]="owner">{{owner}}</mat-option>
+                </mat-select>
+            </mat-form-field>
+        </th>
+        <th></th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr *ngFor="let stack of filteredStacks" (click)="selectStack(stack)">
+        <td><img src="{{stack.template.logo}}"> {{stack.template.title}}</td>
+        <td>{{stack.name}}</td>
+        <td>admin</td>
+        <td>
+            <button mat-button>details</button>
+            <button mat-button>edit</button>
+        </td>
+    </tr>
+    </tbody>
+</table>

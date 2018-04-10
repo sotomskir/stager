@@ -1,0 +1,7 @@
+<div>
+    <jhi-alert></jhi-alert>
+    <div *ngIf="!selectedStack">
+        <jhi-stack-list (select)="selectStack($event)" [stacks]="stacks"></jhi-stack-list>
+    </div>
+    <jhi-deploy (cancel)="clearSelectedStack()" *ngIf="selectedTemplate" [template]="selectedTemplate"></jhi-deploy>
+</div>

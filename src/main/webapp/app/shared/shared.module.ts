@@ -19,7 +19,7 @@ import {
 @NgModule({
     imports: [
         StagerSharedLibsModule,
-        StagerSharedCommonModule
+        StagerSharedCommonModule,
     ],
     declarations: [
         JhiLoginModalComponent,

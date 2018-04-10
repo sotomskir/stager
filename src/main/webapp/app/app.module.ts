@@ -1,9 +1,9 @@
 import './vendor.ts';
 
-import { NgModule, Injector } from '@angular/core';
+import { Injector, NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { HTTP_INTERCEPTORS } from '@angular/common/http';
-import { Ng2Webstorage, LocalStorageService, SessionStorageService  } from 'ngx-webstorage';
+import { LocalStorageService, Ng2Webstorage, SessionStorageService } from 'ngx-webstorage';
 import { JhiEventManager } from 'ng-jhipster';
 
 import { AuthInterceptor } from './blocks/interceptor/auth.interceptor';
@@ -11,33 +11,37 @@ import { AuthExpiredInterceptor } from './blocks/interceptor/auth-expired.interc
 import { ErrorHandlerInterceptor } from './blocks/interceptor/errorhandler.interceptor';
 import { NotificationInterceptor } from './blocks/interceptor/notification.interceptor';
 import { StagerSharedModule, UserRouteAccessService } from './shared';
-import { StagerAppRoutingModule} from './app-routing.module';
+import { StagerAppRoutingModule } from './app-routing.module';
 import { StagerHomeModule } from './home/home.module';
 import { StagerAdminModule } from './admin/admin.module';
 import { StagerAccountModule } from './account/account.module';
-import { StagerEntityModule } from './entities/entity.module';
 import { PaginationConfig } from './blocks/config/uib-pagination.config';
 // jhipster-needle-angular-add-module-import JHipster will add new module here
 import {
+    ActiveMenuDirective,
+    ErrorComponent,
+    FooterComponent,
     JhiMainComponent,
     NavbarComponent,
-    FooterComponent,
-    ProfileService,
     PageRibbonComponent,
-    ActiveMenuDirective,
-    ErrorComponent
+    ProfileService
 } from './layouts';
+import { StagerTemplatesModule } from './templates/templates.module';
+import { StagerStacksModule } from './stacks/stacks.module';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 
 @NgModule({
     imports: [
         BrowserModule,
+        BrowserAnimationsModule,
         StagerAppRoutingModule,
         Ng2Webstorage.forRoot({ prefix: 'jhi', separator: '-'}),
         StagerSharedModule,
         StagerHomeModule,
         StagerAdminModule,
         StagerAccountModule,
-        StagerEntityModule,
+        StagerTemplatesModule,
+        StagerStacksModule,
         // jhipster-needle-angular-add-module JHipster will add new module here
     ],
     declarations: [
