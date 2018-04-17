@@ -1,23 +1,18 @@
 package io.github.sotomskir.stager.domain;
 
-import com.spotify.docker.client.messages.swarm.Service;
-
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 
-public class Stack implements Serializable {
+public class DeployStackDTO implements Serializable {
     private String name;
     private String owner;
     private Template template;
     private Map<String, String> environment;
-    private List<Service> services = new ArrayList<>();
 
-    public Stack() {
+    public DeployStackDTO() {
     }
 
-    public Stack(String name) {
+    public DeployStackDTO(String name) {
         this.name = name;
     }
 
@@ -51,13 +46,5 @@ public class Stack implements Serializable {
 
     public void setEnvironment(Map<String, String> environment) {
         this.environment = environment;
-    }
-
-    public void setServices(List<Service> services) {
-        this.services = services;
-    }
-
-    public List<Service> getServices() {
-        return services;
     }
 }

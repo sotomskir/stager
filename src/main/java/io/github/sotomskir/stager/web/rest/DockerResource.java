@@ -2,6 +2,8 @@ package io.github.sotomskir.stager.web.rest;
 
 import com.codahale.metrics.annotation.Timed;
 import com.spotify.docker.client.exceptions.DockerException;
+import com.spotify.docker.client.messages.swarm.Service;
+import io.github.sotomskir.stager.domain.DeployStackDTO;
 import io.github.sotomskir.stager.domain.Stack;
 import io.github.sotomskir.stager.domain.Template;
 import io.github.sotomskir.stager.service.DockerService;
@@ -41,10 +43,31 @@ public class DockerResource {
         return ResponseEntity.ok(dockerService.getAllStacks());
     }
 
+    /**
+     * GET all services.
+     *
+     * @return the ResponseEntity with status 200 (OK)
+     */
+    @GetMapping("/services")
+    @Timed
+    public ResponseEntity<List<Service>> getServices() throws DockerException, InterruptedException {
+        log.debug("REST request to get all docker Services");
+        return ResponseEntity.ok(dockerService.getAllServices());
+    }
+
     @PostMapping("/stacks")
     @Timed
-    public ResponseEntity deployStack(@RequestBody Stack stack) throws IOException, InterruptedException, DockerClientException, DockerException {
+    public ResponseEntity deployStack(@RequestBody DeployStackDTO stack) throws IOException, InterruptedException, DockerClientException, DockerException {
+        log.debug("REST request to deploy docker Stack");
         dockerService.deploy(stack);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/stacks/{name}")
+    @Timed
+    public ResponseEntity deleteStack(@PathVariable String name) throws IOException, InterruptedException, DockerClientException, DockerException {
+        log.debug("REST request to delete docker Stack {}", name);
+        dockerService.deleteStack(name);
         return ResponseEntity.noContent().build();
     }
 }

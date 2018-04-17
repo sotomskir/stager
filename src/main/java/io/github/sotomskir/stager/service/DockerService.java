@@ -1,14 +1,14 @@
 package io.github.sotomskir.stager.service;
 
-import com.spotify.docker.client.DefaultDockerClient;
 import com.spotify.docker.client.DockerClient;
 import com.spotify.docker.client.exceptions.DockerException;
 import com.spotify.docker.client.messages.swarm.Service;
 import com.spotify.docker.client.messages.swarm.ServiceSpec;
+import io.github.sotomskir.stager.config.ApplicationProperties;
 import io.github.sotomskir.stager.config.Constants;
+import io.github.sotomskir.stager.domain.DeployStackDTO;
 import io.github.sotomskir.stager.domain.Stack;
 import io.github.sotomskir.stager.domain.Template;
-import io.github.sotomskir.stager.repository.TemplateRepository;
 import io.github.sotomskir.stager.service.util.StreamGobbler;
 import io.github.sotomskir.stager.web.rest.errors.DockerClientException;
 import org.slf4j.Logger;
@@ -16,8 +16,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
+import org.thymeleaf.util.StringUtils;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.Collection;
@@ -35,28 +39,24 @@ import java.util.stream.Collectors;
 @Transactional
 public class DockerService {
     private final Logger log = LoggerFactory.getLogger(DockerService.class);
-    private final DockerClient docker = new DefaultDockerClient("unix:///var/run/docker.sock");
-    private final TemplateRepository templateRepository;
+    private final DockerClient docker;
+    private final ApplicationProperties applicationProperties;
 
-    public DockerService(TemplateRepository repository) {
-        this.templateRepository = repository;
+    public DockerService(DockerClient docker, ApplicationProperties applicationProperties) {
+        this.docker = docker;
+        this.applicationProperties = applicationProperties;
     }
 
-    public void deploy(Stack stack) throws IOException, InterruptedException, DockerClientException, DockerException {
+    public void deploy(DeployStackDTO stack) throws IOException, InterruptedException, DockerClientException, DockerException {
         File temp = File.createTempFile("docker-compose", ".yml");
         URL url = new URL(stack.getTemplate().getRepository().getUrl() + "/" + stack.getTemplate().getRepository().getStackfile());
         downloadFromUrl(url, temp.getAbsolutePath());
         ProcessBuilder builder = new ProcessBuilder();
-        try (BufferedWriter out = new BufferedWriter(new FileWriter(temp))) {
-            out.write(stack.getTemplate().getContent());
-        } catch (IOException e) {
-            log.error("cannot write file: {}, exception: {}", temp.getAbsolutePath(), e.getMessage());
-            temp.delete();
-            throw new DockerClientException();
-        }
         builder.environment();
         builder.command("docker", "stack", "deploy", "-c", temp.getAbsolutePath(), stack.getName());
         stack.getEnvironment().forEach((k, v) -> builder.environment().put(k, v));
+        builder.environment().put("STACK_NAME", stack.getName());
+        builder.environment().put("PROXY_DOMAIN", applicationProperties.getDocker().getProxyDomain());
         Process process = builder.start();
         StringBuilder stdout = new StringBuilder();
         StringBuilder stderr = new StringBuilder();
@@ -70,6 +70,7 @@ public class DockerService {
             log.error("stack deploy error: {}", message);
             throw new DockerClientException(message);
         }
+        Thread.sleep(1000);
         addServiceLabels(stack);
         temp.delete();
         log.info("stack {} deployed successfuly: {}", stack.getName(), stdout.toString());
@@ -105,36 +106,34 @@ public class DockerService {
         }
     }
 
-    private void addServiceLabels(Stack stack) throws DockerException, InterruptedException {
+    private void addServiceLabels(DeployStackDTO stack) throws DockerException, InterruptedException {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String username = authentication.getName();
-        docker.listServices().stream()
+        List<Service> stackServices = docker.listServices().stream()
             .filter(filterByStackName(stack.getName()))
-            .forEach(s -> {
-                ServiceSpec spec = ServiceSpec.builder()
-                    .taskTemplate(s.spec().taskTemplate())
-                    .labels(s.spec().labels())
-                    .endpointSpec(s.spec().endpointSpec())
-                    .mode(s.spec().mode())
-                    .name(s.spec().name())
-                    .networks(s.spec().networks())
-                    .updateConfig(s.spec().updateConfig())
-                    .addLabel(
-                        Constants.SERVICE_OWNER_LABEL,
-                        username
-                    ).addLabel(
-                        Constants.TEMPLATE_REPOSITORY_STACKFILE_LABEL,
-                        stack.getTemplate().getRepository().getStackfile()
-                    ).addLabel(
-                        Constants.TEMPLATE_REPOSITORY_URL_LABEL,
-                        stack.getTemplate().getRepository().getUrl()
-                    ).build();
-                try {
-                    docker.updateService(s.id(), s.version().index(), spec);
-                } catch (DockerException | InterruptedException e) {
-                    e.printStackTrace();
-                }
-            });
+            .collect(Collectors.toList());
+
+        for (Service s : stackServices) {
+            ServiceSpec spec = ServiceSpec.builder()
+                .taskTemplate(s.spec().taskTemplate())
+                .labels(s.spec().labels())
+                .endpointSpec(s.spec().endpointSpec())
+                .mode(s.spec().mode())
+                .name(s.spec().name())
+                .networks(s.spec().networks())
+                .updateConfig(s.spec().updateConfig())
+                .addLabel(
+                    Constants.SERVICE_OWNER_LABEL,
+                    username
+                ).addLabel(
+                    Constants.TEMPLATE_REPOSITORY_STACKFILE_LABEL,
+                    stack.getTemplate().getRepository().getStackfile()
+                ).addLabel(
+                    Constants.TEMPLATE_REPOSITORY_URL_LABEL,
+                    stack.getTemplate().getRepository().getUrl()
+                ).build();
+            docker.updateService(s.id(), s.version().index(), spec);
+        }
     }
 
     public List<Stack> getAllStacks() throws DockerException, InterruptedException {
@@ -144,6 +143,7 @@ public class DockerService {
                 List<Service> stackServices = services.stream()
                     .filter(filterByStackName(stack.getName()))
                     .collect(Collectors.toList());
+                stack.setServices(stackServices);
                 stack.setEnvironment(getEnvironmentFromServices(stackServices));
                 stack.setTemplate(getTemplateFromServices(stackServices));
                 stack.setOwner(getOwnerFromServices(stackServices));
@@ -187,13 +187,31 @@ public class DockerService {
     }
 
     private Map<String, String> getEnvironmentFromServices(List<Service> services) {
-        return services.stream()
+        Map<String, String> env = services.stream()
             .map(service -> Objects.requireNonNull(service.spec().taskTemplate().containerSpec()).env())
             .filter(Objects::nonNull)
             .flatMap(Collection::stream)
+            .distinct()
             .collect(Collectors.toMap(
                 o -> o.split("=")[0], o -> o.split("=").length > 1 ? o.split("=")[1] : "")
             );
+
+        Map<String, String> versions = services.stream()
+            .collect(Collectors.toMap(this::getVersionKey, this::getVersionValue));
+        env.putAll(versions);
+        return env;
+    }
+
+    private String getVersionValue(Service service) {
+        String version = StringUtils.substringAfter(service.spec().taskTemplate().containerSpec().image(), ":");
+        if (version == null) {
+            version = "latest";
+        }
+        return version;
+    }
+
+    private String getVersionKey(Service o) {
+        return StringUtils.substringAfter(Objects.requireNonNull(o.spec().name()), "_").toUpperCase() + "_VERSION";
     }
 
     private List<Stack> getStacksFromServices(List<Service> services) {
@@ -203,5 +221,31 @@ public class DockerService {
             .filter(Objects::nonNull)
             .map(Stack::new)
             .collect(Collectors.toList());
+    }
+
+    public List<Service> getAllServices() throws DockerException, InterruptedException {
+        return docker.listServices();
+    }
+
+    public void deleteStack(String name) throws IOException, InterruptedException, DockerClientException {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        log.info("Request to delete stack: {} made by user: {}", name, username);
+        ProcessBuilder builder = new ProcessBuilder();
+        builder.command("docker", "stack", "rm", name);
+        Process process = builder.start();
+        StringBuilder stdout = new StringBuilder();
+        StringBuilder stderr = new StringBuilder();
+        StreamGobbler inputStreamGobbler = new StreamGobbler(process.getInputStream(), stdout::append);
+        StreamGobbler errorStreamGobbler = new StreamGobbler(process.getErrorStream(), stderr::append);
+        Executors.newSingleThreadExecutor().submit(inputStreamGobbler);
+        Executors.newSingleThreadExecutor().submit(errorStreamGobbler);
+        int exitCode = process.waitFor();
+        if (exitCode != 0) {
+            String message = stderr.toString();
+            log.error("stack rm error: {}", message);
+            throw new DockerClientException(message);
+        }
+        log.info("stack {} removed successfuly: {}", name, stdout.toString());
     }
 }

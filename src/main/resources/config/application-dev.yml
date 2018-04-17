@@ -102,7 +102,7 @@ jhipster:
     security:
         authentication:
             jwt:
-                secret: my-secret-token-to-change-in-production
+                secret: Q3poYkVxa2VXeEZFR0hxMkxEZkZsN1RIRDJxWW5hTlE=
                 # Token is valid 24 hours
                 token-validity-in-seconds: 86400
                 token-validity-in-seconds-for-remember-me: 2592000
@@ -140,3 +140,8 @@ jhipster:
 # ===================================================================
 
 application:
+    docker:
+        uri: http://localhost:2375
+        proxy-domain: lvh.me
+    templates:
+        uri: http://localhost:8765

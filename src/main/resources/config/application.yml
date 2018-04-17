@@ -106,3 +106,9 @@ jhipster:
 # ===================================================================
 
 application:
+    docker:
+        uri: unix:///var/run/docker.sock
+    templates:
+        uri: http://templates
+    nexus:
+        url: https://nexus.office.local
