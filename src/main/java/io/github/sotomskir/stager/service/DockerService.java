@@ -53,7 +53,7 @@ public class DockerService {
         downloadFromUrl(url, temp.getAbsolutePath());
         ProcessBuilder builder = new ProcessBuilder();
         builder.environment();
-        builder.command("docker", "stack", "deploy", "-c", temp.getAbsolutePath(), stack.getName());
+        builder.command("docker", "stack", "deploy", "--with-registry-auth", "-c", temp.getAbsolutePath(), stack.getName());
         stack.getEnvironment().forEach((k, v) -> builder.environment().put(k, v));
         builder.environment().put("STACK_NAME", stack.getName());
         builder.environment().put("PROXY_DOMAIN", applicationProperties.getDocker().getProxyDomain());
