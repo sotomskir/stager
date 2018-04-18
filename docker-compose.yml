@@ -9,6 +9,6 @@ services:
             - POSTGRES_PASSWORD=
 
     templates:
-        image: templates
+        image: portainer/templates
         ports:
             - 8081:80

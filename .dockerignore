@@ -1,2 +1,4 @@
-*
-!build/libs/*
+.git/
+node_modules/
+build/
+.gradle/

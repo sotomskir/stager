@@ -1,6 +1,5 @@
 package io.github.sotomskir.stager.service;
 
-import com.sun.org.apache.xpath.internal.operations.Bool;
 import io.github.sotomskir.stager.config.ApplicationProperties;
 import io.github.sotomskir.stager.service.dto.DockerImageTags;
 import org.apache.commons.lang.StringUtils;

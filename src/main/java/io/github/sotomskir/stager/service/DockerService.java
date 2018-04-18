@@ -49,7 +49,7 @@ public class DockerService {
 
     public void deploy(DeployStackDTO stack) throws IOException, InterruptedException, DockerClientException, DockerException {
         File temp = File.createTempFile("docker-compose", ".yml");
-        URL url = new URL(stack.getTemplate().getRepository().getUrl() + "/" + stack.getTemplate().getRepository().getStackfile());
+        URL url = new URL(applicationProperties.getTemplates().getUri() + "/" + stack.getTemplate().getRepository().getStackfile());
         downloadFromUrl(url, temp.getAbsolutePath());
         ProcessBuilder builder = new ProcessBuilder();
         builder.environment();
