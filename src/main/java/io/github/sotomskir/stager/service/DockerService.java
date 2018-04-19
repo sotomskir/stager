@@ -193,8 +193,13 @@ public class DockerService {
             .flatMap(Collection::stream)
             .distinct()
             .collect(Collectors.toMap(
-                o -> o.split("=")[0], o -> o.split("=").length > 1 ? o.split("=")[1] : "")
-            );
+                o -> o.split("=")[0],
+                o -> o.split("=").length > 1 ? o.split("=")[1] : "",
+                (o1, o2) -> {
+                    log.warn("duplicate key found! o1: {}, o2: {}, using value of o1", o1, o2);
+                    return o1;
+                }
+            ));
 
         Map<String, String> versions = services.stream()
             .collect(Collectors.toMap(this::getVersionKey, this::getVersionValue));
