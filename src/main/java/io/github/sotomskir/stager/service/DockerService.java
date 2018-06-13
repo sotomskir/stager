@@ -17,17 +17,16 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 import org.thymeleaf.util.StringUtils;
+import org.yaml.snakeyaml.Yaml;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.URL;
 import java.net.URLConnection;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -47,10 +46,11 @@ public class DockerService {
         this.applicationProperties = applicationProperties;
     }
 
-    public void deploy(DeployStackDTO stack) throws IOException, InterruptedException, DockerClientException, DockerException {
+    public void deploy(DeployStackDTO stack) throws IOException, InterruptedException, DockerClientException {
         File temp = File.createTempFile("docker-compose", ".yml");
         URL url = new URL(applicationProperties.getTemplates().getUri() + "/" + stack.getTemplate().getRepository().getStackfile());
         downloadFromUrl(url, temp.getAbsolutePath());
+        addServiceLabels(temp, stack);
         ProcessBuilder builder = new ProcessBuilder();
         builder.environment();
         builder.command("docker", "stack", "deploy", "--with-registry-auth", "-c", temp.getAbsolutePath(), stack.getName());
@@ -71,8 +71,8 @@ public class DockerService {
             throw new DockerClientException(message);
         }
         Thread.sleep(1000);
-        addServiceLabels(stack);
-        temp.delete();
+//        addServiceLabels(stack);
+//        temp.delete();
         log.info("stack {} deployed successfuly: {}", stack.getName(), stdout.toString());
     }
 
@@ -134,6 +134,60 @@ public class DockerService {
                 ).build();
             docker.updateService(s.id(), s.version().index(), spec);
         }
+    }
+
+    public void addServiceLabels(File file, DeployStackDTO stack) {
+        Map<String, Map> compose = (Map<String, Map>) fromYaml(file);
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        compose.get("services").values().stream().forEach((service) -> {
+            LinkedHashMap<String, LinkedHashMap> deploy = getOrCreate((LinkedHashMap<String, LinkedHashMap>) service, "deploy");
+            LinkedHashMap<String, String> labels = getOrCreate(deploy, "labels");
+            labels.put(Constants.TEMPLATE_REPOSITORY_URL_LABEL, stack.getTemplate().getRepository().getUrl());
+            labels.put(Constants.TEMPLATE_REPOSITORY_STACKFILE_LABEL, stack.getTemplate().getRepository().getStackfile());
+            labels.put(Constants.SERVICE_OWNER_LABEL, username);
+        });
+        toYaml(compose, file);
+    }
+
+    private LinkedHashMap getOrCreate(LinkedHashMap<String, LinkedHashMap> map, String key) {
+        LinkedHashMap<String, LinkedHashMap> value = map.get(key);
+        if (value == null) {
+            map.put(key, new LinkedHashMap<String, Object>());
+            value = map.get(key);
+        }
+        return value;
+    }
+
+    public void toYaml(Object object, File file) {
+        Yaml yaml = new Yaml();
+        FileWriter writer = null;
+        try {
+            writer = new FileWriter(file);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        yaml.dump(object, writer);
+        log.info(yaml.dump(object));
+    }
+
+    static String readFile(String path, Charset encoding)
+        throws IOException
+    {
+        byte[] encoded = Files.readAllBytes(Paths.get(path));
+        return new String(encoded, encoding);
+    }
+
+    public Object fromYaml(File file) {
+
+        Object obj = null;
+        Yaml yaml = new Yaml();
+        try {
+            obj = yaml.load(readFile(file.getPath(), StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return obj;
     }
 
     public List<Stack> getAllStacks() throws DockerException, InterruptedException {
